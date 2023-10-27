@@ -1,0 +1,28 @@
+services:
+  redis:
+    image: redis:latest
+    restart: always
+
+  celery:
+    build:
+      context: .
+    restart: always
+    command: sh -c "celery -A instager worker --concurrency 3"
+    volumes:
+      - .:/code
+    depends_on:
+      - redis
+    environment:
+      - CELERY_BROKER_URL = "redis://redis:6379"
+      - CELERY_RESULT_BACKEND = "redis://redis:6379"
+
+  app:
+    build:
+      context: .
+    command: sh -c "python manage.py runserver"
+    restart: always
+    volumes:
+      - .:/code
+    depends_on:
+      - redis
+      - celery
