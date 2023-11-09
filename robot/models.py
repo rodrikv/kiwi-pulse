@@ -35,3 +35,14 @@ class Robot(models.Model):
 
     def __str__(self):
         return self.username
+
+
+class Media(models.Model):
+    name = models.CharField(max_length=50)
+    media_file = models.FileField(upload_to='media/')
+
+    media_type = models.CharField(max_length=10, choices=[
+        ('photo', 'Photo'),
+        ('video', 'Video'),
+        ('audio', 'Audio'),
+    ])
