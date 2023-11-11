@@ -38,7 +38,7 @@ class Robot(models.Model):
 
 
 class Media(models.Model):
-    name = models.CharField(max_length=50)
+    name = models.CharField(max_length=50, unique=True, blank=False)
     media_file = models.FileField(upload_to='media/')
 
     media_type = models.CharField(max_length=10, choices=[
@@ -46,3 +46,12 @@ class Media(models.Model):
         ('video', 'Video'),
         ('audio', 'Audio'),
     ])
+
+    # rename media with hashed name before uploading
+    def save(self, *args, **kwargs):
+        self.media_file.name = "_".join([self.name, self.media_file.name])
+        super().save(*args, **kwargs)
+
+
+    def __str__(self):
+        return self.name

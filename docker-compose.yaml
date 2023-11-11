@@ -16,7 +16,7 @@ services:
       - CELERY_BROKER_URL = "redis://redis:6379"
       - CELERY_RESULT_BACKEND = "redis://redis:6379"
 
-  app:
+  django:
     build:
       context: .
     command: sh -c "python manage.py runserver"
@@ -26,3 +26,33 @@ services:
     depends_on:
       - redis
       - celery
+    environment:
+      - PRODUCTION = True
+      - DB_NAME = kiwi
+      - DB_USER = kiwi
+      - DB_PASSWORD = kiwi
+      - DB_HOST = db
+      - DB_PORT = 5432
+
+  db:
+    image: postgres:latest
+    container_name: postgres_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB = kiwi
+      - POSTGRES_USER = kiwi
+      - POSTGRES_PASSWORD = kiwi
+
+  nginx:
+    image: nginx:latest
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf  # Nginx configuration file
+      - ./static:/app/static  # Path to Django static files
+    ports:
+      - "80:80"
+    depends_on:
+      - django
+
+volumes:
+  postgres_data:
