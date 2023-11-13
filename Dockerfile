@@ -17,7 +17,8 @@ RUN apt-get install -y \
     libxml2-dev \
     libxslt-dev \
     libxml2 \
-    gcc
+    gcc \
+    libpq-dev
 
 
 RUN pip3 install --upgrade pip

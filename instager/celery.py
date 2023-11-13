@@ -19,7 +19,7 @@ app.autodiscover_tasks()
 
 app.conf.beat_schedule = {
     'your_periodic_task': {
-        'task': 'robot.tasks.your_periodic_task',
+        'task': 'robot.tasks.check_media_to_publish',
         'schedule': crontab(),
     },
 }

@@ -2,8 +2,23 @@ services:
   redis:
     image: redis:latest
     restart: always
+    expose:
+      - 6379
 
   celery:
+    build:
+      context: .
+    restart: always
+    command: sh -c "celery -A instager beat -l info"
+    volumes:
+      - .:/code
+    depends_on:
+      - redis
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379
+      - CELERY_RESULT_BACKEND=redis://redis:6379
+  
+  celery-beat:
     build:
       context: .
     restart: always
@@ -13,8 +28,8 @@ services:
     depends_on:
       - redis
     environment:
-      - CELERY_BROKER_URL = "redis://redis:6379"
-      - CELERY_RESULT_BACKEND = "redis://redis:6379"
+      - CELERY_BROKER_URL=redis://redis:6379
+      - CELERY_RESULT_BACKEND=redis://redis:6379
 
   django:
     build:
@@ -24,15 +39,17 @@ services:
     volumes:
       - .:/code
     depends_on:
-      - redis
-      - celery
+      redis:
+        condition: service_started
+      db:
+        condition: service_healthy
     environment:
-      - PRODUCTION = True
-      - DB_NAME = kiwi
-      - DB_USER = kiwi
-      - DB_PASSWORD = kiwi
-      - DB_HOST = db
-      - DB_PORT = 5432
+      - PRODUCTION=True
+      - DB_NAME=kiwi
+      - DB_USER=kiwi
+      - DB_PASSWORD=kiwi
+      - DB_HOST=db
+      - DB_PORT=5432
 
   db:
     image: postgres:latest
@@ -40,9 +57,15 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     environment:
-      - POSTGRES_DB = kiwi
-      - POSTGRES_USER = kiwi
-      - POSTGRES_PASSWORD = kiwi
+      - POSTGRES_DB=kiwi
+      - POSTGRES_USER=kiwi
+      - POSTGRES_PASSWORD=kiwi
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kiwi -d kiwi"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
 
   nginx:
     image: nginx:latest

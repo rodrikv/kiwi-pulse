@@ -7,6 +7,8 @@ db.sqlite3
 media
 .vscode
 
+celerybeat-schedule
+
 # Backup files # 
 *.bak 
 
