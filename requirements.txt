@@ -10,9 +10,11 @@ click-didyoumean==0.3.0
 click-plugins==1.1.1
 click-repl==0.3.0
 Django==4.2.7
+gunicorn==21.2.0
 idna==3.4
 instagrapi==2.0.0
 kombu==5.3.3
+packaging==23.2
 Pillow==10.1.0
 prompt-toolkit==3.0.39
 psycopg2==2.9.9
