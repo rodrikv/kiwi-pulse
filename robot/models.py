@@ -1,9 +1,23 @@
+from collections.abc import Iterable
 from django.db import models
+from pathlib import Path
 from django.core.cache import cache
 from django.utils.translation import gettext_lazy as _
 
 from instagrapi import Client
-from instagrapi.types import Story as InstaStory
+from instagrapi.types import (
+    Media,
+    Story as InstaStory,
+    StoryHashtag,
+    StoryLink,
+    StoryLocation,
+    StoryMedia,
+    StoryMention,
+    StorySticker,
+)
+
+
+from typing import List, Dict
 
 
 # Create your models here.
@@ -11,6 +25,8 @@ class Robot(models.Model):
     username = models.CharField(max_length=50, unique=True, blank=False, null=False)
     password = models.CharField(max_length=50, blank=False, null=False)
     settings = models.JSONField(default=dict, blank=True, null=True)
+    test_robot = models.ForeignKey("self", on_delete=models.SET_NULL, null=True, blank=True, related_name="test_robot")
+
     client_timeout = 60 * 60 * 24 * 7
 
     def set_client(self, client: Client):
@@ -164,32 +180,46 @@ class Robot(models.Model):
 
     def publish_video_story(
         self,
-        path: str,
+        path: Path,
         caption: str = "",
-        upload_id: str = "",
-        mentions = [],
-        locations = [],
-        links = [],
-        hashtags = [],
-        stickers = [],
-        medias = [],
+        thumbnail: Path = None,
+        mentions: List[StoryMention] = [],
+        locations: List[StoryLocation] = [],
+        links: List[StoryLink] = [],
+        hashtags: List[StoryHashtag] = [],
+        stickers: List[StorySticker] = [],
+        medias: List[StoryMedia] = [],
+        extra_data: Dict[str, str] = {}
     ):
-        pass
+        client = self.get_logged_in_client()
 
+        media = client.video_upload_to_story(
+            path = path,
+            caption = caption,
+            thumbnail = thumbnail,
+            mentions = mentions,
+            locations = locations,
+            links = links,
+            hashtags = hashtags,
+            stickers = stickers,
+            medias = medias,
+            extra_data = extra_data
+        )
 
+        return media
 
 
     def publish_photo_story(
         self,
-        path: str,
+        path: Path,
         caption: str = "",
         upload_id: str = "",
-        mentions = [],
-        locations = [],
-        links = [],
-        hashtags = [],
-        stickers = [],
-        medias = [],
+        mentions: List[StoryMention] = [],
+        locations: List[StoryLocation] = [],
+        links: List[StoryLink] = [],
+        hashtags: List[StoryHashtag] = [],
+        stickers: List[StorySticker] = [],
+        medias: List[StoryMedia] = [],
     ) -> InstaStory:
         client = self.get_logged_in_client()
 
@@ -252,10 +282,15 @@ class Post(models.Model):
 
     publish_at = models.DateTimeField(verbose_name="Post At")
 
-    def publish(self):
-        if self.published:
-            return
+    def save(self, force_insert: bool = ..., force_update: bool = ..., using: str | None = ..., update_fields: Iterable[str] | None = ...) -> None:
+        if not self.publish:
+            self.pre_publis()
+        return super().save(force_insert, force_update, using, update_fields)
 
+    def pre_publish(self):
+        self.__publish(self.robot.test_robot)
+
+    def __publish(self, robot: Robot):
         medias = [media for media in self.medias.all()]
 
         if len(medias) > 1:
@@ -276,6 +311,12 @@ class Post(models.Model):
                 self.caption.text,
             )
 
+    def publish(self):
+        if self.published:
+            return
+
+        self.__publish(self.robot)
+
         self.published = True
         self.save()
 
@@ -292,23 +333,35 @@ class Story(models.Model):
 
     publish_at = models.DateTimeField(verbose_name="Story At")
 
-    def publish(self):
-        if self.published:
-            return
+    def save(self, force_insert: bool = ..., force_update: bool = ..., using: str | None = ..., update_fields: Iterable[str] | None = ...) -> None:
+        if not self.publish:
+            self.pre_publish()
+        return super().save(force_insert, force_update, using, update_fields)
 
+    
+    def pre_publish(self):
+        self.__publish(self.robot.test_robot)
+
+    def __publish(self, robot: Robot):
         medias = [media for media in self.medias.all()]
 
         for media in medias:
             if media.media_type == "video":
-                self.robot.publish_video_story(
+                robot.publish_video_story(
                     media.media_file.path,
                     caption=self.caption.text,
                 )
             elif media.media_type == "photo":
-                self.robot.publish_photo_story(
+                robot.publish_photo_story(
                     media.media_file.path,
                     caption=self.caption.text,
                 )
+
+    def publish(self):
+        if self.published:
+            return
+
+        self.__publish(self.robot)
 
         self.published = True
         self.save()
