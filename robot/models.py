@@ -1,8 +1,9 @@
 from django.db import models
-from instagrapi import Client
+from django.core.cache import cache
 from django.utils.translation import gettext_lazy as _
 
-from django.core.cache import cache
+from instagrapi import Client
+from instagrapi.types import Story as InstaStory
 
 
 # Create your models here.
@@ -161,6 +162,51 @@ class Robot(models.Model):
 
         return media
 
+    def publish_video_story(
+        self,
+        path: str,
+        caption: str = "",
+        upload_id: str = "",
+        mentions = [],
+        locations = [],
+        links = [],
+        hashtags = [],
+        stickers = [],
+        medias = [],
+    ):
+        pass
+
+
+
+
+    def publish_photo_story(
+        self,
+        path: str,
+        caption: str = "",
+        upload_id: str = "",
+        mentions = [],
+        locations = [],
+        links = [],
+        hashtags = [],
+        stickers = [],
+        medias = [],
+    ) -> InstaStory:
+        client = self.get_logged_in_client()
+
+        media = client.photo_upload_to_story(
+            path = path,
+            caption = caption,
+            upload_id = upload_id,
+            mentions = mentions,
+            locations = locations,
+            links = links,
+            hashtags = hashtags,
+            stickers = stickers,
+            medias = medias,
+        )
+
+        return media
+
     def __str__(self):
         return self.username
 
@@ -229,6 +275,40 @@ class Post(models.Model):
                 medias[0].media_file.path,
                 self.caption.text,
             )
+
+        self.published = True
+        self.save()
+
+    def __str__(self) -> str:
+        return self.robot.username + " caption: " + self.caption.text[:20]
+
+
+class Story(models.Model):
+    robot = models.ForeignKey(Robot, on_delete=models.CASCADE)
+    caption = models.ForeignKey(Caption, on_delete=models.DO_NOTHING)
+    usertags = models.ManyToManyField(UserTag, blank=True)
+    medias = models.ManyToManyField(Media, verbose_name="Story Medias")
+    published = models.BooleanField(default=False)
+
+    publish_at = models.DateTimeField(verbose_name="Story At")
+
+    def publish(self):
+        if self.published:
+            return
+
+        medias = [media for media in self.medias.all()]
+
+        for media in medias:
+            if media.media_type == "video":
+                self.robot.publish_video_story(
+                    media.media_file.path,
+                    caption=self.caption.text,
+                )
+            elif media.media_type == "photo":
+                self.robot.publish_photo_story(
+                    media.media_file.path,
+                    caption=self.caption.text,
+                )
 
         self.published = True
         self.save()

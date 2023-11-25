@@ -1,19 +1,29 @@
 from celery import shared_task
-from robot.models import Post
+from robot.models import Post, Story
+from datetime import timedelta, datetime
+
 
 @shared_task
 def check_media_to_publish():
-    # check if there is any media to publish in next one minute
-    # if yes, publish it
+    now = datetime.now()
+    one_minute_later = now + timedelta(minutes=1)
 
-    # get all posts that are scheduled to be published in next one minute
-    posts = Post.objects.filter(published=False)
+    media_types = [
+        Post,
+        Story
+    ]
 
-    # publish each post
-    for post in posts:
-        post.publish()
+    for media_type in media_types:
+    # Filter posts scheduled to be published in the next one minute
+        medias_to_publish = media_type.objects.filter(
+            published=False,
+            publish_at__lte=one_minute_later
+        )
+        # publish each post
+        for post in medias_to_publish:
+            post.publish()
 
-        print("published post: ", post)
+            print("published post: ", post)
 
         # send notification to email
 

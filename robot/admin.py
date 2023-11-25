@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.utils.html import format_html
 from .forms import RobotForm, MediaForm
 
-from .models import Robot, Caption, Media, UserTag, Post
+from .models import Robot, Caption, Media, UserTag, Post, Story
 
 
 class RobotAdmin(admin.ModelAdmin):
@@ -37,6 +37,7 @@ class CaptionAdmin(admin.ModelAdmin):
 
 admin.site.register(Robot, RobotAdmin)
 admin.site.register(Media, MediaAdmin)
+admin.site.register(Story)
 admin.site.register(Post)
 admin.site.register(Caption)
 admin.site.register(UserTag)
