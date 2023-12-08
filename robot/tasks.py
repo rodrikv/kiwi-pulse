@@ -2,6 +2,9 @@ from celery import shared_task
 from robot.models import Post, Story
 from datetime import timedelta, datetime
 
+from time import sleep
+from typing import Optional
+
 
 @shared_task
 def check_media_to_publish():

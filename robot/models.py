@@ -4,6 +4,16 @@ from pathlib import Path
 from django.core.cache import cache
 from django.utils.translation import gettext_lazy as _
 
+from django.db.models.signals import post_save, m2m_changed
+from django.dispatch import receiver
+
+from dirtyfields import DirtyFieldsMixin
+
+import logging
+
+logger = logging.getLogger(__name__)
+
+
 from instagrapi import Client
 from instagrapi.types import (
     Media,
@@ -25,8 +35,7 @@ class Robot(models.Model):
     username = models.CharField(max_length=50, unique=True, blank=False, null=False)
     password = models.CharField(max_length=50, blank=False, null=False)
     settings = models.JSONField(default=dict, blank=True, null=True)
-    test_robot = models.ForeignKey("self", on_delete=models.SET_NULL, null=True, blank=True, related_name="test_robot")
-
+    test_robot = models.ForeignKey("self", on_delete=models.SET_NULL, null=True, blank=True, related_name="test_bot", related_query_name="test_bot")
     client_timeout = 60 * 60 * 24 * 7
 
     def set_client(self, client: Client):
@@ -260,7 +269,7 @@ class Media(models.Model):
 
 class Caption(models.Model):
     name = models.CharField(max_length=50, unique=True)
-    text = models.TextField(max_length=500, verbose_name="caption")
+    text = models.TextField(max_length=2200, verbose_name="caption")
 
     def __str__(self):
         return self.name
@@ -274,6 +283,8 @@ class UserTag(models.Model):
 
 
 class Post(models.Model):
+    publish_test = models.BooleanField(default=True)
+
     robot = models.ForeignKey(Robot, on_delete=models.CASCADE)
     caption = models.ForeignKey(Caption, on_delete=models.DO_NOTHING)
     usertags = models.ManyToManyField(UserTag, blank=True)
@@ -282,31 +293,27 @@ class Post(models.Model):
 
     publish_at = models.DateTimeField(verbose_name="Post At")
 
-    def save(self, force_insert: bool = ..., force_update: bool = ..., using: str | None = ..., update_fields: Iterable[str] | None = ...) -> None:
-        if not self.publish:
-            self.pre_publis()
-        return super().save(force_insert, force_update, using, update_fields)
-
     def pre_publish(self):
-        self.__publish(self.robot.test_robot)
+        if self.robot.test_robot:
+            self.__publish(self.robot.test_robot)
 
     def __publish(self, robot: Robot):
         medias = [media for media in self.medias.all()]
 
         if len(medias) > 1:
-            self.robot.publish_album(
+            robot.publish_album(
                 list(map(lambda x: x.media_file.path, medias)),
                 self.caption.text
             )
 
         elif medias[0].media_type == "photo":
-            self.robot.publish_post(
+            robot.publish_post(
                 medias[0].media_file.path,
                 self.caption.text,
             )
 
         elif medias[0].media_type == "video":
-            self.robot.publish_video(
+            robot.publish_video(
                 medias[0].media_file.path,
                 self.caption.text,
             )
@@ -324,7 +331,9 @@ class Post(models.Model):
         return self.robot.username + " caption: " + self.caption.text[:20]
 
 
-class Story(models.Model):
+class Story(DirtyFieldsMixin, models.Model):
+    publish_test = models.BooleanField(default=True)
+
     robot = models.ForeignKey(Robot, on_delete=models.CASCADE)
     caption = models.ForeignKey(Caption, on_delete=models.DO_NOTHING)
     usertags = models.ManyToManyField(UserTag, blank=True)
@@ -332,15 +341,10 @@ class Story(models.Model):
     published = models.BooleanField(default=False)
 
     publish_at = models.DateTimeField(verbose_name="Story At")
-
-    def save(self, force_insert: bool = ..., force_update: bool = ..., using: str | None = ..., update_fields: Iterable[str] | None = ...) -> None:
-        if not self.publish:
-            self.pre_publish()
-        return super().save(force_insert, force_update, using, update_fields)
-
     
     def pre_publish(self):
-        self.__publish(self.robot.test_robot)
+        if self.robot.test_robot:
+            self.__publish(self.robot.test_robot)
 
     def __publish(self, robot: Robot):
         medias = [media for media in self.medias.all()]

@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.utils.html import format_html
-from .forms import RobotForm, MediaForm
+from .forms import RobotForm, MediaForm, StoryForm
 
 from .models import Robot, Caption, Media, UserTag, Post, Story
 
@@ -10,7 +10,7 @@ class RobotAdmin(admin.ModelAdmin):
 
     form = RobotForm
 
-    fieldsets = ((None, {"fields": ("username", "password", "settings")}),)
+    fieldsets = ((None, {"fields": ("username", "password", "settings", "test_robot")}),)
 
 
 class MediaAdmin(admin.ModelAdmin):
@@ -35,9 +35,13 @@ class CaptionAdmin(admin.ModelAdmin):
     fieldsets = ((None, {"fields": ("text",)}),)
 
 
+class StoryAdmin(admin.ModelAdmin):
+    form = StoryForm
+
+
 admin.site.register(Robot, RobotAdmin)
 admin.site.register(Media, MediaAdmin)
-admin.site.register(Story)
+admin.site.register(Story, StoryAdmin)
 admin.site.register(Post)
 admin.site.register(Caption)
 admin.site.register(UserTag)

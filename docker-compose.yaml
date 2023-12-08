@@ -13,9 +13,12 @@ services:
     volumes:
       - .:/code
     depends_on:
-      - redis
-      - db
-      - django
+      db:
+        condition: service_healthy
+      django:
+        condition: service_started
+      redis:
+        condition: service_started
     environment:
       - CELERY_BROKER_URL=redis://redis:6379
       - CELERY_RESULT_BACKEND=redis://redis:6379
@@ -34,9 +37,12 @@ services:
     volumes:
       - .:/code
     depends_on:
-      - redis
-      - db
-      - django
+      db:
+        condition: service_healthy
+      django:
+        condition: service_started
+      redis:
+        condition: service_started
     environment:
       - CELERY_BROKER_URL=redis://redis:6379
       - CELERY_RESULT_BACKEND=redis://redis:6379
@@ -57,8 +63,10 @@ services:
     ports:
       - 8000:8000
     depends_on:
-      - redis
-      - db
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
     environment:
       - PRODUCTION=True
       - DB_NAME=kiwi
@@ -66,6 +74,7 @@ services:
       - DB_PASSWORD=kiwi
       - DB_HOST=db
       - DB_PORT=5432
+      - DEBUG=True
 
   db:
     image: postgres:latest
